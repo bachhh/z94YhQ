@@ -2,4 +2,7 @@ module z94YhQ/hashtable
 
 go 1.16
 
-require github.com/OneOfOne/xxhash v1.2.8 // indirect
+require (
+	github.com/OneOfOne/xxhash v1.2.8 // indirect
+	github.com/zeebo/assert v1.3.0 // indirect
+)

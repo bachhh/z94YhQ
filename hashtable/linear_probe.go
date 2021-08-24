@@ -26,7 +26,15 @@ type record struct {
 	tombstone bool
 }
 
-func NewLinearProbe(size int) (l *LinearProbe) {
+type TableOption func(l *LinearProbe)
+
+func WithHasher(hasher func(string) uint64) TableOption {
+	return func(l *LinearProbe) {
+		l.hasher = hasher
+	}
+}
+
+func NewLinearProbe(size int, options ...TableOption) (l *LinearProbe) {
 	l = &LinearProbe{
 		table: make([]*record, size),
 		hasher: func(in string) uint64 {
@@ -36,6 +44,9 @@ func NewLinearProbe(size int) (l *LinearProbe) {
 		// this keep collision rate low
 		growthFactor: 0.5,
 	}
+	for _, f := range options {
+		f(l)
+	}
 	return
 }
 
@@ -43,6 +54,11 @@ func (l *LinearProbe) Put(key string, value interface{}) {
 	if !l.shoudlResize() { // optimistic branching
 		index := int(l.hashFunc(key))
 		if l.table[index] == nil {
+			l.table[index] = &record{key: key, value: value}
+			l.recordCount++
+			return
+		} else if l.table[index] != nil && l.table[index].tombstone {
+			// occupied but key tombstoned, overwrite
 			l.table[index] = &record{key: key, value: value}
 			l.recordCount++
 			return
@@ -61,30 +77,13 @@ func (l *LinearProbe) Put(key string, value interface{}) {
 	l.Put(key, value)
 }
 
+// Get return value assigned with key, nil if not found
 func (l *LinearProbe) Get(key string) interface{} {
-	index := int(l.hashFunc(key))
-	if l.table[index] == nil {
+	record := l.getRecord(key)
+	if record == nil {
 		return nil
-	}
-	if l.table[index].key == key {
-		if !l.table[index].tombstone {
-			return l.table[index].value
-		}
-		return nil // key found but marked as delete
-	}
-
-	// key occupied but record not matched, linear search until found empty slot
-	for i := 0; i < len(l.table); i++ {
-		index := int(l.hashFunc(key))
-		if l.table[index] == nil {
-			return nil
-		}
-		if l.table[index].key == key {
-			if !l.table[index].tombstone {
-				return l.table[index].value
-			}
-			return nil // key found but marked as delete
-		}
+	} else if !record.tombstone {
+		return record.value
 	}
 	return nil
 }
@@ -100,12 +99,12 @@ func (l *LinearProbe) getRecord(key string) *record {
 
 	// key occupied but record not matched, linear search until found empty slot
 	for i := 0; i < len(l.table); i++ {
-		index := int(l.hashFunc(key))
-		if l.table[index] == nil {
+		k := (index + i) % len(l.table)
+		if l.table[k] == nil {
 			return nil
 		}
-		if l.table[index].key == key {
-			return l.table[index]
+		if l.table[k].key == key { // keep searching otherwise
+			return l.table[k]
 		}
 	}
 	return nil
@@ -113,7 +112,13 @@ func (l *LinearProbe) getRecord(key string) *record {
 
 // Delete delete a key, return whether key exist, if yes, also return value return
 func (l *LinearProbe) Delete(key string) (exist bool, value interface{}) {
-	return
+	record := l.getRecord(key)
+	if record == nil {
+		return false, nil
+	}
+	record.tombstone = true
+	l.recordCount--
+	return true, record.value
 }
 
 func (l *LinearProbe) Size() uint64 { return l.recordCount }
