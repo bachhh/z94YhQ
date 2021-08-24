@@ -43,5 +43,5 @@ func TestLinearProbe(t *testing.T) {
 	})
 
 	// TODO(bach) test delete and get
-	// TODO(bach) test insert,delete and get interaction
+	// TODO(bach) test insert, delete,  and get interaction
 }

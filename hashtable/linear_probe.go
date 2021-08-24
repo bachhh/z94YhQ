@@ -34,6 +34,12 @@ func WithHasher(hasher func(string) uint64) TableOption {
 	}
 }
 
+func WithGrowthFactor(factor float32) TableOption {
+	return func(l *LinearProbe) {
+		l.growthFactor = factor
+	}
+}
+
 func NewLinearProbe(size int, options ...TableOption) (l *LinearProbe) {
 	l = &LinearProbe{
 		table: make([]*record, size),
