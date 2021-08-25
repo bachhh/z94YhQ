@@ -6,12 +6,6 @@ import (
 	"github.com/OneOfOne/xxhash"
 )
 
-var seed uint64
-
-func init() {
-	seed = uint64(time.Now().UnixNano())
-}
-
 type LinearProbe struct {
 	recordCount uint64
 	table       []*record
@@ -44,10 +38,10 @@ func NewLinearProbe(size int, options ...TableOption) (l *LinearProbe) {
 	l = &LinearProbe{
 		table: make([]*record, size),
 		hasher: func(in string) uint64 {
-			return xxhash.ChecksumString64S(in, seed)
+			return xxhash.ChecksumString64S(in, uint64(time.Now().UnixNano()))
 		},
-		// doubling the size keep the table at 1/2 filled,
 		// this keep collision rate low
+		// sensible default doubling the size keep the table at 1/2 filled
 		loadFactor: 0.5,
 	}
 	for _, f := range options {
