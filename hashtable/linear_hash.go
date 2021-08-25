@@ -1,7 +1,6 @@
 package hashtable
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/OneOfOne/xxhash"
@@ -13,7 +12,7 @@ import (
 
 type LinearHash struct {
 	recordCount uint64
-	table       []*record
+	slotArray   []*lhBucket
 
 	hasher func(string) uint64
 
@@ -22,20 +21,14 @@ type LinearHash struct {
 	overflowTH    int // determine overflow threshold
 }
 
-type lhRecord struct {
+type lhBucket struct {
 	key       string
 	value     interface{}
+	next      *lhBucket
 	tombstone bool
-	next      *lhRecord
 }
 
 type LHTableOption func(l *LinearHash)
-
-func LHWithHasher(hasher func(string) uint64) LHTableOption {
-	return func(l *LinearHash) {
-		l.hasher = hasher
-	}
-}
 
 func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 	l = &LinearHash{
@@ -51,12 +44,19 @@ func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 
 func (l *LinearHash) Put(key string, value interface{}) {
 	index := l.hashFunc(key)
-	fmt.Println(index)
+	if l.insertBucket(index, key, value) {
+		l.split()
+	}
 	return
 }
 
 // Get return value assigned with key, return (nil, false) if key not found in table
 func (l *LinearHash) Get(key string) (interface{}, bool) {
+	for z := l.slotArray[l.hashFunc(key)]; z != nil; z = z.next {
+		if z.key == key {
+			return z.value, true
+		}
+	}
 	return nil, false
 }
 
@@ -70,11 +70,27 @@ func (l *LinearHash) Size() uint64 { return l.recordCount }
 func (l *LinearHash) hashFunc(key string) (index uint64) {
 	index = l.hasher(key)
 	if index < uint64(l.splitPointer) {
-		return index % uint64(len(l.table))
+		return index % uint64(len(l.slotArray))
 	}
-	return index % (2 * uint64(len(l.table)))
+	return index % (2 * uint64(len(l.slotArray)))
+}
+
+func (l *LinearHash) insertBucket(index uint64, key string, value interface{}) (shouldSplit bool) {
+	i, f := 0, l.slotArray[index]
+	for ; f != nil; f, i = f.next, i+1 {
+	} // nil slot found
+	*f = lhBucket{key: key, value: value} // append new value to end
+	return i > l.overflowTH
 }
 
 func (l *LinearHash) split() {
+	l.slotArray = append(l.slotArray, (*lhBucket)(nil))
+	old := l.slotArray[l.splitPointer]
+	l.slotArray = nil
+	// with the worst hash function you can end up with an infinite loop
+	for old != nil {
+		l.Put(old.key, old.value)
+		old = old.next
+	}
 	l.splitPointer = (l.splitPointer + 1) % l.bucketCounter
 }
