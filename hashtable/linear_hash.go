@@ -1,6 +1,7 @@
 package hashtable
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/OneOfOne/xxhash"
@@ -14,9 +15,11 @@ type LinearHash struct {
 	recordCount uint64
 	table       []*record
 
-	hasher       func(string) uint64
-	splitPointer int
-	overflowTH   int // determine overflow threshold
+	hasher func(string) uint64
+
+	bucketCounter int
+	splitPointer  int // position of next bucket to be split
+	overflowTH    int // determine overflow threshold
 }
 
 type lhRecord struct {
@@ -47,6 +50,9 @@ func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 }
 
 func (l *LinearHash) Put(key string, value interface{}) {
+	index := l.hashFunc(key)
+	fmt.Println(index)
+	return
 }
 
 // Get return value assigned with key, return (nil, false) if key not found in table
@@ -60,3 +66,15 @@ func (l *LinearHash) Delete(key string) (exist bool, value interface{}) {
 }
 
 func (l *LinearHash) Size() uint64 { return l.recordCount }
+
+func (l *LinearHash) hashFunc(key string) (index uint64) {
+	index = l.hasher(key)
+	if index < uint64(l.splitPointer) {
+		return index % uint64(len(l.table))
+	}
+	return index % (2 * uint64(len(l.table)))
+}
+
+func (l *LinearHash) split() {
+	l.splitPointer = (l.splitPointer + 1) % l.bucketCounter
+}
