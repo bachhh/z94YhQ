@@ -20,21 +20,21 @@ type record struct {
 	tombstone bool
 }
 
-type TableOption func(l *LinearProbe)
+type LBTableOption func(l *LinearProbe)
 
-func WithHasher(hasher func(string) uint64) TableOption {
+func LBWithHasher(hasher func(string) uint64) LBTableOption {
 	return func(l *LinearProbe) {
 		l.hasher = hasher
 	}
 }
 
-func WithGrowthFactor(factor float32) TableOption {
+func LBWithLoadFactor(factor float32) LBTableOption {
 	return func(l *LinearProbe) {
 		l.loadFactor = factor
 	}
 }
 
-func NewLinearProbe(size int, options ...TableOption) (l *LinearProbe) {
+func NewLinearProbe(size int, options ...LBTableOption) (l *LinearProbe) {
 	l = &LinearProbe{
 		table: make([]*record, size),
 		hasher: func(in string) uint64 {
@@ -111,14 +111,14 @@ func (l *LinearProbe) getRecord(key string) *record {
 }
 
 // Delete delete a key, return whether key exist, if yes, also return value return
-func (l *LinearProbe) Delete(key string) (exist bool, value interface{}) {
+func (l *LinearProbe) Delete(key string) (value interface{}, exist bool) {
 	record := l.getRecord(key)
 	if record == nil {
-		return false, nil
+		return nil, false
 	}
 	record.tombstone = true
 	l.recordCount--
-	return true, record.value
+	return record.value, true
 }
 
 func (l *LinearProbe) Size() uint64 { return l.recordCount }
