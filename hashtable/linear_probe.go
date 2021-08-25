@@ -16,8 +16,8 @@ type LinearProbe struct {
 	recordCount uint64
 	table       []*record
 	hasher      func(string) uint64
-	// when exceeding size*growthFactor, perform resize(), where table will grow by 1/growthFactor.
-	growthFactor float32
+	// when exceeding size*loadFactor, perform resize(), where table will grow by 1/loadFactor.
+	loadFactor float32
 }
 
 type record struct {
@@ -36,7 +36,7 @@ func WithHasher(hasher func(string) uint64) TableOption {
 
 func WithGrowthFactor(factor float32) TableOption {
 	return func(l *LinearProbe) {
-		l.growthFactor = factor
+		l.loadFactor = factor
 	}
 }
 
@@ -48,7 +48,7 @@ func NewLinearProbe(size int, options ...TableOption) (l *LinearProbe) {
 		},
 		// doubling the size keep the table at 1/2 filled,
 		// this keep collision rate low
-		growthFactor: 0.5,
+		loadFactor: 0.5,
 	}
 	for _, f := range options {
 		f(l)
@@ -131,12 +131,12 @@ func (l *LinearProbe) Size() uint64 { return l.recordCount }
 
 // shoudlResize return true if table needs resizing
 func (l *LinearProbe) shoudlResize() bool {
-	return l.recordCount > uint64(float32(len(l.table))*l.growthFactor)
+	return l.recordCount > uint64(float32(len(l.table))*l.loadFactor)
 }
 
 func (l *LinearProbe) resize() {
 	oldTable := l.table
-	l.recordCount, l.table = 0, make([]*record, int(float32(len(l.table))*(1/l.growthFactor)))
+	l.recordCount, l.table = 0, make([]*record, int(float32(len(l.table))*(1/l.loadFactor)))
 	for _, record := range oldTable {
 		if record == nil {
 			continue
