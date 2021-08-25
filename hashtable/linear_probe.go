@@ -83,15 +83,15 @@ func (l *LinearProbe) Put(key string, value interface{}) {
 	l.Put(key, value)
 }
 
-// Get return value assigned with key, nil if not found
-func (l *LinearProbe) Get(key string) interface{} {
+// Get return value assigned with key, return (nil, false) if key not found in table
+func (l *LinearProbe) Get(key string) (interface{}, bool) {
 	record := l.getRecord(key)
 	if record == nil {
-		return nil
+		return nil, false
 	} else if !record.tombstone {
-		return record.value
+		return record.value, true
 	}
-	return nil
+	return nil, false
 }
 
 func (l *LinearProbe) getRecord(key string) *record {

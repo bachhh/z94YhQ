@@ -21,7 +21,7 @@ func TestLinearProbe(t *testing.T) {
 			h.Put(fmt.Sprintf("%d", i), fmt.Sprintf("value %d", i))
 		}
 		for i := 0; i < 100; i++ {
-			value := h.Get(fmt.Sprintf("%d", i))
+			value, _ := h.Get(fmt.Sprintf("%d", i))
 			assert.Equal(t, value, fmt.Sprintf("value %d", i))
 		}
 	})
@@ -37,7 +37,7 @@ func TestLinearProbe(t *testing.T) {
 			h.Put(fmt.Sprintf("%d", i), fmt.Sprintf("value %d", i))
 		}
 		for i := 0; i < 100; i++ {
-			value := h.Get(fmt.Sprintf("%d", i))
+			value, _ := h.Get(fmt.Sprintf("%d", i))
 			assert.Equal(t, value, fmt.Sprintf("value %d", i))
 		}
 	})
