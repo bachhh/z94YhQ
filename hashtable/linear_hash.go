@@ -27,6 +27,12 @@ type lhBucket struct {
 	tombstone bool
 }
 
+func WithOverflowTH(threshold int) LHTableOption {
+	return func(l *LinearHash) {
+		l.overflowTH = threshold
+	}
+}
+
 type LHTableOption func(l *LinearHash)
 
 func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
@@ -34,6 +40,8 @@ func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 		hasher: func(in string) uint64 {
 			return xxhash.ChecksumString64S(in, uint64(time.Now().UnixNano()))
 		},
+		splitPointer: 0,
+		overflowTH:   3,
 	}
 	for _, f := range options {
 		f(l)
@@ -60,14 +68,17 @@ func (l *LinearHash) Get(key string) (interface{}, bool) {
 }
 
 // Delete delete a key, return whether key exist, if yes, also return value return
-func (l *LinearHash) Delete(key string) (exist bool, value interface{}) {
+func (l *LinearHash) Delete(key string) (value interface{}, exist bool) {
 	// Here is the Linus Good Taste Linked List
 	var item **lhBucket = &l.slotArray[l.hashFunc(key)]
-	for (*item).key != key {
+	for (*item) != nil && (*item).key != key {
 		item = &(*item).next
 	}
-	*item = (*item).next
-	return false, nil
+	if (*item) == nil {
+		return nil, false
+	}
+	value, *item = (*item).value, (*item).next
+	return value, true
 }
 
 func (l *LinearHash) Size() uint64 { return l.recordCount }
