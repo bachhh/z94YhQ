@@ -9,7 +9,6 @@ import (
 // Linear hash differs from Linear Probe that this is a incremental, dynamic sized
 // hash table every overflow operation will split and resize at most X keys from
 // the table.
-
 type LinearHash struct {
 	recordCount uint64
 	slotArray   []*lhBucket
