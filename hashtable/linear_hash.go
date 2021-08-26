@@ -61,6 +61,12 @@ func (l *LinearHash) Get(key string) (interface{}, bool) {
 
 // Delete delete a key, return whether key exist, if yes, also return value return
 func (l *LinearHash) Delete(key string) (exist bool, value interface{}) {
+	// Here is the Linus Good Taste Linked List
+	var item **lhBucket = &l.slotArray[l.hashFunc(key)]
+	for (*item).key != key {
+		item = &(*item).next
+	}
+	*item = (*item).next
 	return false, nil
 }
 
@@ -83,13 +89,12 @@ func (l *LinearHash) insertBucket(index uint64, key string, value interface{}) (
 }
 
 func (l *LinearHash) split() {
+	// 1. add new slot in array
 	l.slotArray = append(l.slotArray, (*lhBucket)(nil))
-	old := l.slotArray[l.splitPointer]
-	l.slotArray = nil
-	// with the worst hash function you can end up with an infinite loop
-	for old != nil {
-		l.Put(old.key, old.value)
-		old = old.next
+	// 2. redistribute keys in the split bucket
+	for old := l.slotArray[l.splitPointer]; old != nil; old = old.next {
+		l.insertBucket(l.hashFunc(old.key), old.key, old.value)
 	}
+	// 3. increment split pointer
 	l.splitPointer = (l.splitPointer + 1) % l.bucketCounter
 }
