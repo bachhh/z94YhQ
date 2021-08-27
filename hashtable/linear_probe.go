@@ -1,6 +1,8 @@
 package hashtable
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/OneOfOne/xxhash"
@@ -15,9 +17,9 @@ type LinearProbe struct {
 }
 
 type record struct {
-	key       string
-	value     interface{}
-	tombstone bool
+	key     string
+	value   interface{}
+	expunge bool
 }
 
 type LBTableOption func(l *LinearProbe)
@@ -51,14 +53,15 @@ func NewLinearProbe(size int, options ...LBTableOption) (l *LinearProbe) {
 }
 
 func (l *LinearProbe) Put(key string, value interface{}) {
+	fmt.Println(strings.ReplaceAll(fmt.Sprintf("%#v\n", l), ",", ",\n"))
 	if !l.shoudlResize() { // optimistic branching
 		index := int(l.hashFunc(key))
 		if l.table[index] == nil {
 			l.table[index] = &record{key: key, value: value}
 			l.recordCount++
 			return
-		} else if l.table[index] != nil && l.table[index].tombstone {
-			// occupied but key tombstoned, overwrite
+		} else if l.table[index] != nil && l.table[index].expunge {
+			// occupied but key expunged, overwrite
 			l.table[index] = &record{key: key, value: value}
 			l.recordCount++
 			return
@@ -82,7 +85,7 @@ func (l *LinearProbe) Get(key string) (interface{}, bool) {
 	record := l.getRecord(key)
 	if record == nil {
 		return nil, false
-	} else if !record.tombstone {
+	} else if !record.expunge {
 		return record.value, true
 	}
 	return nil, false
@@ -116,7 +119,7 @@ func (l *LinearProbe) Delete(key string) (value interface{}, exist bool) {
 	if record == nil {
 		return nil, false
 	}
-	record.tombstone = true
+	record.expunge = true
 	l.recordCount--
 	return record.value, true
 }

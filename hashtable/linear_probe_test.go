@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/zeebo/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLinearProbe(t *testing.T) {
@@ -17,26 +17,28 @@ func TestLinearProbe(t *testing.T) {
 
 	t.Run("TestInsertAndGet", func(t *testing.T) {
 		h := NewLinearProbe(6)
-		for i := 0; i < 100; i++ {
+		count := 3
+		for i := 0; i < count; i++ {
 			h.Put(fmt.Sprintf("%d", i), fmt.Sprintf("value %d", i))
 		}
-		for i := 0; i < 100; i++ {
+		for i := 0; i < count; i++ {
 			value, _ := h.Get(fmt.Sprintf("%d", i))
-			assert.Equal(t, value, fmt.Sprintf("value %d", i))
+			assert.Equalf(t, value, fmt.Sprintf("value %d", i))
 		}
 	})
 
 	t.Run("TestBadHashInsertAndGet", func(t *testing.T) {
-		// TestBadHashInsertAndGet use a bad hash function with high collision rate
+		// TestBadHashInsertAndGet use worst hash func with 100% collision rate
 		h := NewLinearProbe(3,
-			WithHasher(func(string) uint64 {
+			LBWithHasher(func(string) uint64 {
 				return 0
 			}),
 		)
-		for i := 0; i < 100; i++ {
+		count := 10
+		for i := 0; i < count; i++ {
 			h.Put(fmt.Sprintf("%d", i), fmt.Sprintf("value %d", i))
 		}
-		for i := 0; i < 100; i++ {
+		for i := 0; i < count; i++ {
 			value, _ := h.Get(fmt.Sprintf("%d", i))
 			assert.Equal(t, value, fmt.Sprintf("value %d", i))
 		}
