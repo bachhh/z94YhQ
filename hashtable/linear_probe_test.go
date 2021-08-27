@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	_ "github.com/davecgh/go-spew/spew" // useful, bookmark
 	"github.com/stretchr/testify/assert"
 )
 
