@@ -1,8 +1,6 @@
 package hashtable
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/OneOfOne/xxhash"
@@ -37,10 +35,11 @@ func LBWithLoadFactor(factor float32) LBTableOption {
 }
 
 func NewLinearProbe(size int, options ...LBTableOption) (l *LinearProbe) {
+	var hashSeed = uint64(time.Now().UnixNano())
 	l = &LinearProbe{
 		table: make([]*record, size),
 		hasher: func(in string) uint64 {
-			return xxhash.ChecksumString64S(in, uint64(time.Now().UnixNano()))
+			return xxhash.ChecksumString64S(in, hashSeed)
 		},
 		// this keep collision rate low
 		// sensible default doubling the size keep the table at 1/2 filled
@@ -53,9 +52,8 @@ func NewLinearProbe(size int, options ...LBTableOption) (l *LinearProbe) {
 }
 
 func (l *LinearProbe) Put(key string, value interface{}) {
-	fmt.Println(strings.ReplaceAll(fmt.Sprintf("%#v\n", l), ",", ",\n"))
 	if !l.shoudlResize() { // optimistic branching
-		index := int(l.hashFunc(key))
+		index := l.hashFunc(key)
 		if l.table[index] == nil {
 			l.table[index] = &record{key: key, value: value}
 			l.recordCount++
@@ -106,9 +104,9 @@ func (l *LinearProbe) getRecord(key string) *record {
 		if l.table[k] == nil {
 			return nil
 		}
-		if l.table[k].key == key { // keep searching otherwise
+		if l.table[k].key == key {
 			return l.table[k]
-		}
+		} // keep searching otherwise
 	}
 	return nil
 }
@@ -142,6 +140,6 @@ func (l *LinearProbe) resize() {
 	}
 }
 
-func (l *LinearProbe) hashFunc(key string) (index uint64) {
-	return l.hasher(key) % uint64(len(l.table))
+func (l *LinearProbe) hashFunc(key string) (index int) {
+	return int(l.hasher(key) % uint64(len(l.table)))
 }

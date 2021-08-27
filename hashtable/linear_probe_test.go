@@ -17,13 +17,13 @@ func TestLinearProbe(t *testing.T) {
 
 	t.Run("TestInsertAndGet", func(t *testing.T) {
 		h := NewLinearProbe(6)
-		count := 3
+		count := 100
 		for i := 0; i < count; i++ {
 			h.Put(fmt.Sprintf("%d", i), fmt.Sprintf("value %d", i))
 		}
 		for i := 0; i < count; i++ {
 			value, _ := h.Get(fmt.Sprintf("%d", i))
-			assert.Equalf(t, value, fmt.Sprintf("value %d", i))
+			assert.Equalf(t, value, fmt.Sprintf("value %d", i), "value not match at key %d", i)
 		}
 	})
 
@@ -34,7 +34,7 @@ func TestLinearProbe(t *testing.T) {
 				return 0
 			}),
 		)
-		count := 10
+		count := 100
 		for i := 0; i < count; i++ {
 			h.Put(fmt.Sprintf("%d", i), fmt.Sprintf("value %d", i))
 		}
