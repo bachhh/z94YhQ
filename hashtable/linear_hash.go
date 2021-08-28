@@ -6,6 +6,12 @@ import (
 	"github.com/OneOfOne/xxhash"
 )
 
+// minimum size for the slot array, to stop reclaming spaces
+const LH_MIN_TABLE_SIZE = 6
+
+// minimum length for buckets
+const LH_MIN_BUCKET_SIZE = 6
+
 // Linear hash differs from Linear Probe that this is a incremental, dynamic sized
 // hash table every overflow operation will split and resize at most X keys from
 // the table.
@@ -20,7 +26,7 @@ type LinearHash struct {
 
 	bucketCounter int
 	splitPointer  int // position of next bucket to be split
-	overflowTH    int // determine overflow threshold
+	BucketSize    int // determine overflow threshold
 }
 
 type lhBucket struct {
@@ -30,22 +36,18 @@ type lhBucket struct {
 	tombstone bool
 }
 
-func WithOverflowTH(threshold int) LHTableOption {
+// WithBucketSize set the maximum bucket size
+func WithBucketSize(size int) LHTableOption {
+	size = max(size, LH_MIN_BUCKET_SIZE)
 	return func(l *LinearHash) {
-		l.overflowTH = threshold
-	}
-}
-
-func WithSize(size int) LHTableOption {
-	return func(l *LinearHash) {
-		l.slotArray = make([]*lhBucket, size)
-		l.n = size
+		l.BucketSize = size
 	}
 }
 
 type LHTableOption func(l *LinearHash)
 
 func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
+	size = max(size, LH_MIN_BUCKET_SIZE)
 	l = &LinearHash{
 		hasher: func(in string) uint64 {
 			return xxhash.ChecksumString64S(in, uint64(time.Now().UnixNano()))
@@ -53,7 +55,7 @@ func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 		slotArray:    make([]*lhBucket, size),
 		n:            size,
 		splitPointer: 0,
-		overflowTH:   3,
+		BucketSize:   3,
 	}
 
 	for _, f := range options {
@@ -114,7 +116,7 @@ func (l *LinearHash) insertBucket(index uint64, key string, value interface{}) (
 	for ; *f != nil; f, i = &(*f).next, i+1 {
 	} // nil slot found
 	*f = &lhBucket{key: key, value: value} // append new value to end
-	return i > l.overflowTH
+	return i > l.BucketSize
 }
 
 func (l *LinearHash) split() {
@@ -133,7 +135,8 @@ func (l *LinearHash) split() {
 }
 
 func (l *LinearHash) unsplit() {
-	if l.slotArray[len(l.slotArray)-1] != nil {
+	if l.slotArray[len(l.slotArray)-1] != nil ||
+		len(l.slotArray) < LH_MIN_SIZE {
 		return // nothing to reclaim
 	}
 	// shorten

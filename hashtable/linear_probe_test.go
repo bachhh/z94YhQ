@@ -92,10 +92,3 @@ func TestLinearProbe(t *testing.T) {
 		}
 	})
 }
-
-func min(a, b int) int {
-	if a > b {
-		return b
-	}
-	return a
-}

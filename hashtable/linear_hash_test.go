@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
+	_ "github.com/davecgh/go-spew/spew" // useful, bookmark
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -92,6 +94,12 @@ func TestLinearHash(t *testing.T) {
 	})
 
 	t.Run("TestReclaim", func(t *testing.T) {
+		h := NewLinearProbe(6)
+		spew.Dump(h)
+		// count := 100
+		// delete aggressively,
+		//	- test if table reclaim spaces correctly
+		//	- test if get operation still perform correctly
 		return
 	})
 }
