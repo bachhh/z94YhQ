@@ -133,7 +133,7 @@ func (l *LinearHash) split() {
 }
 
 func (l *LinearHash) unsplit() {
-	if l.slotArray[len(l.slotArray)-1] == nil {
+	if l.slotArray[len(l.slotArray)-1] != nil {
 		return // nothing to reclaim
 	}
 	// shorten
