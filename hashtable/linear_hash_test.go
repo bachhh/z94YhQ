@@ -1,6 +1,7 @@
 package hashtable
 
 import (
+	"fmt"
 	"testing"
 
 	_ "github.com/davecgh/go-spew/spew" // useful, bookmark
@@ -19,18 +20,15 @@ func TestLinearHash(t *testing.T) {
 	t.Run("TestInsertAndGet", func(t *testing.T) {
 		h := NewLinearHash(6)
 		count := 100
-		keys := []int{}
 		for i := 0; i < count; i++ {
 			key, value := kv(i)
 			h.Put(key, value)
-			keys = append(keys, h.hashFunc(key))
 		}
-		// spew.Dump(keys)
-		// spew.Dump(len(h.slotArray))
+
 		for i := 0; i < count; i++ {
 			k, v := kv(i)
 			value, ok := h.Get(k)
-			require.Truef(t, ok, "key %s not found", k)
+			require.Truef(t, ok, "key %s not found, original index %d", k, h.hashFunc(k))
 			require.Equalf(t, value, v, "value not match at key %s", k)
 		}
 	})
@@ -131,4 +129,25 @@ func TestLinearHash(t *testing.T) {
 	//	return
 	//})
 
+}
+
+func debugLH(h *LinearHash) (s string) {
+	for i, v := range h.slotArray {
+		switch {
+		case i == h.splitPointer && i == (h.n-1):
+			s += fmt.Sprintf("*%d:\t", i)
+		case i == (h.n - 1):
+			s += fmt.Sprintf("n%d:\t", i)
+		case i == h.splitPointer:
+			s += fmt.Sprintf("+%d:\t", i)
+		default:
+			s += fmt.Sprintf(" %d:\t", i)
+		}
+
+		for ; v != nil; v = v.next {
+			s += fmt.Sprintf("'%s'-", v.key)
+		}
+		s += "\n"
+	}
+	return
 }

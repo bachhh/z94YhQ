@@ -74,21 +74,17 @@ func (l *LinearHash) Put(key string, value interface{}) {
 }
 
 func (l *LinearHash) split() {
-	// 1. add new slot in array
 	l.slotArray = append(l.slotArray, (*lhBucket)(nil))
 
-	// 2. increment split pointer,
-	l.splitPointer++
-
-	// 3. redistribute keys in the split bucket
+	// redistribute keys in the splitted bucket
 	old := l.slotArray[l.splitPointer]
 	l.slotArray[l.splitPointer] = nil
+	l.splitPointer++
 	for ; old != nil; old = old.next {
 		l.insertBucket(old.key, old.value)
 	}
 
-	// if surpass the n value: doubles the hash modulo, reset split pointer to 0
-	if l.splitPointer > l.n {
+	if l.splitPointer >= l.n {
 		l.n = len(l.slotArray)
 		l.splitPointer = 0
 	}
