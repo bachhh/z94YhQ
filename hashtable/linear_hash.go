@@ -109,10 +109,11 @@ func (l *LinearHash) hashFunc(key string) (index uint64) {
 }
 
 func (l *LinearHash) insertBucket(index uint64, key string, value interface{}) (shouldSplit bool) {
-	i, f := 0, l.slotArray[index]
-	for ; f != nil; f, i = f.next, i+1 {
+	i, f := 0, &l.slotArray[index]
+	// Here is the Linus Good Taste Linked List
+	for ; *f != nil; f, i = &(*f).next, i+1 {
 	} // nil slot found
-	*f = lhBucket{key: key, value: value} // append new value to end
+	*f = &lhBucket{key: key, value: value} // append new value to end
 	return i > l.overflowTH
 }
 
