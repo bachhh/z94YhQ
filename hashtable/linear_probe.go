@@ -81,16 +81,14 @@ func (l *LinearProbe) Put(key string, value interface{}) {
 // Get return value assigned with key, return (nil, false) if key not found in table
 func (l *LinearProbe) Get(key string) (interface{}, bool) {
 	record := l.getRecord(key)
-	if record == nil {
-		return nil, false
-	} else if !record.expunge {
+	if record != nil && !record.expunge {
 		return record.value, true
 	}
 	return nil, false
 }
 
 func (l *LinearProbe) getRecord(key string) *record {
-	index := int(l.hashFunc(key))
+	index := l.hashFunc(key)
 	if l.table[index] == nil {
 		return nil
 	}
@@ -98,7 +96,7 @@ func (l *LinearProbe) getRecord(key string) *record {
 		return l.table[index]
 	}
 
-	// key occupied but record not matched, linear search until found empty slot
+	// key occupied but record not matched, linear search
 	for i := 0; i < len(l.table); i++ {
 		k := (index + i) % len(l.table)
 		if l.table[k] == nil {
