@@ -48,14 +48,15 @@ type LHTableOption func(l *LinearHash)
 
 func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 	size = max(size, LH_MIN_BUCKET_SIZE)
+	seed := uint64(time.Now().UnixNano())
 	l = &LinearHash{
 		hasher: func(in string) uint64 {
-			return xxhash.ChecksumString64S(in, uint64(time.Now().UnixNano()))
+			return xxhash.ChecksumString64S(in, seed)
 		},
 		slotArray:    make([]*lhBucket, size),
 		n:            size,
 		splitPointer: 0,
-		BucketSize:   3,
+		BucketSize:   LH_MIN_BUCKET_SIZE,
 	}
 
 	for _, f := range options {
@@ -65,12 +66,42 @@ func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 }
 
 func (l *LinearHash) Put(key string, value interface{}) {
-	index := l.hashFunc(key)
-	if l.insertBucket(index, key, value) {
+	if l.insertBucket(key, value) {
 		l.split()
 	}
 	l.recordCount++
 	return
+}
+
+func (l *LinearHash) split() {
+	// 1. add new slot in array
+	l.slotArray = append(l.slotArray, (*lhBucket)(nil))
+
+	// 2. increment split pointer,
+	l.splitPointer++
+
+	// 3. redistribute keys in the split bucket
+	old := l.slotArray[l.splitPointer]
+	l.slotArray[l.splitPointer] = nil
+	for ; old != nil; old = old.next {
+		l.insertBucket(old.key, old.value)
+	}
+
+	// if surpass the n value: doubles the hash modulo, reset split pointer to 0
+	if l.splitPointer > l.n {
+		l.n = len(l.slotArray)
+		l.splitPointer = 0
+	}
+}
+
+func (l *LinearHash) insertBucket(key string, value interface{}) (shouldSplit bool) {
+	index := l.hashFunc(key)
+	i, f := 0, &l.slotArray[index]
+	// Here is the Linus Good Taste Linked List
+	for ; *f != nil; f, i = &(*f).next, i+1 {
+	} // nil slot found
+	*f = &lhBucket{key: key, value: value} // append new value to end
+	return i > l.BucketSize
 }
 
 // Get return value assigned with key, return (nil, false) if key not found in table
@@ -95,48 +126,23 @@ func (l *LinearHash) Delete(key string) (value interface{}, exist bool) {
 	}
 	l.recordCount--
 	value, *item = (*item).value, (*item).next
-	// TODO reclaim
 	l.unsplit()
 	return value, true
 }
 
 func (l *LinearHash) Size() uint64 { return l.recordCount }
 
-func (l *LinearHash) hashFunc(key string) (index uint64) {
-	index = l.hasher(key)
+func (l *LinearHash) hashFunc(key string) int {
+	index := l.hasher(key)
 	if (index % uint64(l.n)) < uint64(l.splitPointer) {
-		return index % uint64(l.n*2)
+		return int(index % uint64(l.n*2))
 	}
-	return index % uint64(l.n)
-}
-
-func (l *LinearHash) insertBucket(index uint64, key string, value interface{}) (shouldSplit bool) {
-	i, f := 0, &l.slotArray[index]
-	// Here is the Linus Good Taste Linked List
-	for ; *f != nil; f, i = &(*f).next, i+1 {
-	} // nil slot found
-	*f = &lhBucket{key: key, value: value} // append new value to end
-	return i > l.BucketSize
-}
-
-func (l *LinearHash) split() {
-	// 1. add new slot in array
-	l.slotArray = append(l.slotArray, (*lhBucket)(nil))
-	// 2. redistribute keys in the split bucket
-	for old := l.slotArray[l.splitPointer]; old != nil; old = old.next {
-		l.insertBucket(l.hashFunc(old.key), old.key, old.value)
-	}
-	// 3. increment split pointer,
-	// if surpass the n value: doubles the hash modulo, reset split pointer to 0
-	if l.splitPointer++; l.splitPointer > l.n {
-		l.n = len(l.slotArray)
-		l.splitPointer = 0
-	}
+	return int(index % uint64(l.n))
 }
 
 func (l *LinearHash) unsplit() {
 	if l.slotArray[len(l.slotArray)-1] != nil ||
-		len(l.slotArray) < LH_MIN_SIZE {
+		len(l.slotArray) < LH_MIN_BUCKET_SIZE {
 		return // nothing to reclaim
 	}
 	// shorten
