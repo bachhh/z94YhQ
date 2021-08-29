@@ -1,10 +1,10 @@
 package hashtable
 
 import (
-	"fmt"
 	"testing"
 
 	_ "github.com/davecgh/go-spew/spew" // useful, bookmark
+	"github.com/montanaflynn/stats"
 	"github.com/stretchr/testify/require"
 )
 
@@ -131,23 +131,43 @@ func TestLinearHash(t *testing.T) {
 
 }
 
-func debugLH(h *LinearHash) (s string) {
-	for i, v := range h.slotArray {
-		switch {
-		case i == h.splitPointer && i == (h.n-1):
-			s += fmt.Sprintf("*%d:\t", i)
-		case i == (h.n - 1):
-			s += fmt.Sprintf("n%d:\t", i)
-		case i == h.splitPointer:
-			s += fmt.Sprintf("+%d:\t", i)
-		default:
-			s += fmt.Sprintf(" %d:\t", i)
-		}
+var h *LinearHash
 
-		for ; v != nil; v = v.next {
-			s += fmt.Sprintf("'%s'-", v.key)
-		}
-		s += "\n"
+// TODO bench insert with 64, 128, 256 bytes key
+// BenchmarkLinearHash_1 insert 1 byte key
+func BenchmarkLinearHashInsert_1(b *testing.B) {
+	h = NewLinearHash(6)
+	for i := 0; i < b.N; i++ {
+		h.Put(kv(i))
 	}
+	return
+}
+
+func TestLinearHashDist(t *testing.T) {
+	h = NewLinearHash(6)
+	N := 1000000
+	for i := 0; i < N; i++ {
+		h.Put(kv(i))
+	}
+	metrics := h.Stats()
+	stats := stats.LoadRawData(metrics["bucket_size_stats"])
+
+	min, _ := stats.Min()
+	max, _ := stats.Max()
+	qtl, _ := stats.Quartiles()
+	pctl := 90
+	pctlV, _ := stats.Percentile(float64(pctl))
+
+	t.Logf(
+		"\nSize:\t%d\n"+
+			"Min:\t%f\n"+
+			"Max:\t%f\n"+
+			"Q25:\t%f\n"+
+			"Q50:\t%f\n"+
+			"Q75:\t%f\n"+
+			"pctl_%d\t%f\n",
+		metrics["capacity"],
+		min, max, qtl.Q1, qtl.Q2, qtl.Q3,
+		pctl, pctlV)
 	return
 }

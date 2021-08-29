@@ -24,9 +24,8 @@ type LinearHash struct {
 	// around
 	n int
 
-	bucketCounter int
 	splitPointer  int // position of next bucket to be split
-	BucketSize    int // determine overflow threshold
+	maxBucketSize int // determine overflow threshold
 }
 
 type lhBucket struct {
@@ -36,11 +35,11 @@ type lhBucket struct {
 	tombstone bool
 }
 
-// WithBucketSize set the maximum bucket size
-func WithBucketSize(size int) LHTableOption {
+// WithmaxBucketSize set the maximum bucket size
+func WithmaxBucketSize(size int) LHTableOption {
 	size = max(size, LH_MIN_BUCKET_SIZE)
 	return func(l *LinearHash) {
-		l.BucketSize = size
+		l.maxBucketSize = size
 	}
 }
 
@@ -53,10 +52,10 @@ func NewLinearHash(size int, options ...LHTableOption) (l *LinearHash) {
 		hasher: func(in string) uint64 {
 			return xxhash.ChecksumString64S(in, seed)
 		},
-		slotArray:    make([]*lhBucket, size),
-		n:            size,
-		splitPointer: 0,
-		BucketSize:   LH_MIN_BUCKET_SIZE,
+		slotArray:     make([]*lhBucket, size),
+		n:             size,
+		splitPointer:  0,
+		maxBucketSize: LH_MIN_BUCKET_SIZE,
 	}
 
 	for _, f := range options {
@@ -97,7 +96,7 @@ func (l *LinearHash) insertBucket(key string, value interface{}) (shouldSplit bo
 	for ; *f != nil; f, i = &(*f).next, i+1 {
 	} // nil slot found
 	*f = &lhBucket{key: key, value: value} // append new value to end
-	return i > l.BucketSize
+	return i > l.maxBucketSize
 }
 
 // Get return value assigned with key, return (nil, false) if key not found in table
@@ -147,5 +146,23 @@ func (l *LinearHash) unsplit() {
 	if l.splitPointer--; l.splitPointer < 0 {
 		l.n /= 2
 		l.splitPointer = l.n / 2
+	}
+}
+
+func (l *LinearHash) Stats() map[string]interface{} {
+	bucketSizeSlize := []int{}
+	for _, v := range l.slotArray {
+		c := 0
+		for ; v != nil; v, c = v.next, c+1 {
+		}
+		bucketSizeSlize = append(bucketSizeSlize, c)
+	}
+	return map[string]interface{}{
+		"n":                 l.n,
+		"capacity":          len(l.slotArray),
+		"size":              int(l.recordCount),
+		"split_pointer":     l.splitPointer,
+		"max_bucket_size":   l.maxBucketSize,
+		"bucket_size_stats": bucketSizeSlize,
 	}
 }
