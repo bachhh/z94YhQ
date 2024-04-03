@@ -46,7 +46,6 @@ Dir entry is a special type of data block, where the data content is a mapping f
 | 0      | 16   | entry_len|  total_len of entry |
 
 
-
 | name |  | Note                                                                                   |
 | -       | -    | -                                                                                      |
 | current       | .    | The entry that point to Current directory                                              |
@@ -62,4 +61,6 @@ Dir entry is a special type of data block, where the data content is a mapping f
 - Access mode, Access Control list
 - i_block 3-level indirect
 - extent tree
+- tags 
+- cow
 
