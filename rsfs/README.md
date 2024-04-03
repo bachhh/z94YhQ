@@ -60,4 +60,6 @@ Dir entry is a special type of data block, where the data content is a mapping f
 
 - ACL, File ownership
 - Access mode, Access Control list
+- i_block 3-level indirect
+- extent tree
 
